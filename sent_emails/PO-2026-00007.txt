@@ -1,0 +1,18 @@
+To: sriramcr46@gmail.com
+From: noreply@company.com
+Subject: Purchase Order Issued: PO-2026-00007
+========================================
+Dear Vendor,
+
+We are pleased to issue the following Purchase Order to you:
+
+PO Number: PO-2026-00007
+Total Amount: 10.0 USD
+
+Items Ordered:
+- redbull: 10.00 pcs @ 1.00 each
+
+Please prepare the delivery according to the agreed terms.
+
+Best regards,
+Procurement Team

@@ -1,0 +1,18 @@
+To: sriramcr46@gmail.com
+From: noreply@company.com
+Subject: Purchase Order Issued: PO-2026-00006
+========================================
+Dear Vendor,
+
+We are pleased to issue the following Purchase Order to you:
+
+PO Number: PO-2026-00006
+Total Amount: 10000.0 USD
+
+Items Ordered:
+- R3: 10000.00 pcs @ 1.00 each
+
+Please prepare the delivery according to the agreed terms.
+
+Best regards,
+Procurement Team
