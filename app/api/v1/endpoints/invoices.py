@@ -339,10 +339,9 @@ def verify_razorpay_payment(
         payment.bank_reference = data.razorpay_payment_id
         payment.payment_date = datetime.utcnow()
         
-        # Update Invoice to PAID and PO to CLOSED
+        # Update PO to CLOSED
         inv = db.query(Invoice).filter(Invoice.id == payment.invoice_id).first()
         if inv:
-            inv.status = InvoiceStatus.PAID
             if inv.po_id:
                 po = db.query(PurchaseOrder).filter(PurchaseOrder.id == inv.po_id).first()
                 if po:

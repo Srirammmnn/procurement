@@ -106,6 +106,28 @@ def blacklist_vendor(
     return v
 
 
+@router.delete("/{vendor_id}", status_code=204)
+def delete_vendor(
+    vendor_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.ADMINISTRATOR, UserRole.PROCUREMENT_MANAGER)),
+):
+    v = db.query(Vendor).filter(Vendor.id == vendor_id).first()
+    if not v:
+        raise HTTPException(404, "Vendor not found")
+    
+    # Check if vendor has related entities (POs, Quotes, etc)
+    # SQLAlchemy will raise IntegrityError if there are restrictions, or cascade delete
+    try:
+        db.delete(v)
+        log_audit(db, current_user.id, "DELETE_VENDOR", "Vendor", vendor_id)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(400, f"Cannot delete vendor. They might have active POs or quotations. Error: {str(e)}")
+    return None
+
+
 @router.post("/{vendor_id}/evaluate")
 def evaluate_vendor(
     vendor_id: int,
