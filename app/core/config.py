@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: Optional[str] = None
     
     RAZORPAY_KEY_ID: str = "rzp_test_T0cUaqBftS7Tko"
-    RAZORPAY_KEY_SECRET: str = "dummysecret"
+    RAZORPAY_KEY_SECRET: str = "BjaBAbgJSLd21Rnd728ktpqx"
 
     class Config:
         env_file = ".env"
