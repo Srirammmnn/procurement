@@ -357,22 +357,22 @@ export default function Dashboard({ user, onLogout }) {
       <Sidebar user={user} onLogout={onLogout} />
       <main className="main-content">
         {/* Global Topbar */}
-        <div style={{ 
-          position: 'fixed', 
-          top: '24px', 
-          right: '32px', 
+        <header style={{ 
+          position: 'sticky', 
+          top: 0, 
           zIndex: 1000,
           display: 'flex', 
+          justifyContent: 'flex-end',
           alignItems: 'center', 
           gap: '16px',
-          background: 'rgba(10, 10, 15, 0.8)',
-          backdropFilter: 'blur(12px)',
-          padding: '8px 16px',
-          borderRadius: '20px',
-          border: '1px solid var(--glass-border)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+          background: 'rgba(10, 10, 15, 0.95)',
+          backdropFilter: 'blur(16px)',
+          padding: '16px 40px',
+          margin: '-32px -40px 32px -40px',
+          borderBottom: '1px solid var(--glass-border)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
         }}>
-          <div className="user-profile">
+          <div className="user-profile" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
             <div className="avatar" style={{ width: '36px', height: '36px' }}>
               {user?.full_name?.charAt(0)}
             </div>
@@ -396,7 +396,7 @@ export default function Dashboard({ user, onLogout }) {
           }}>
             <LogOut size={18} /> Sign Out
           </button>
-        </div>
+        </header>
 
         <Routes>
           {isVendor ? (
