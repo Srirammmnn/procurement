@@ -407,8 +407,8 @@ export default function Dashboard({ user, onLogout }) {
               <Route path="/" element={<DashboardHome user={user} />} />
               <Route path="/requisitions" element={<Requisitions user={user} />} />
               <Route path="/purchase-orders" element={<PurchaseOrders user={user} />} />
-              <Route path="/users" element={<Users />} />
-              <Route path="/vendors" element={<Vendors />} />
+              <Route path="/users" element={<Users user={user} />} />
+              <Route path="/vendors" element={<Vendors user={user} />} />
               <Route path="/approvals" element={<Approvals />} />
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/payments" element={<Payments user={user} />} />
