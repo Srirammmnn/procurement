@@ -24,7 +24,8 @@ export default function Vendors({ user }) {
     contact_person: ''
   });
 
-  const isAdminOrManager = user && ['administrator', 'procurement_manager', 'procurement_officer'].includes(user.role.toLowerCase());
+  const isAdmin = user && user.role?.toLowerCase() === 'administrator';
+  const isAdminOrManager = user && ['administrator', 'procurement_manager', 'procurement_officer'].includes(user.role?.toLowerCase());
 
   const fetchData = async () => {
     setLoading(true);
@@ -98,7 +99,7 @@ export default function Vendors({ user }) {
           <h1 style={{ fontSize: '2.2rem', fontWeight: 800 }}>Vendor Management</h1>
           <p style={{ color: 'var(--text-muted)' }}>Add, evaluate, and manage supplier relations.</p>
         </div>
-        {isAdminOrManager && (
+        {isAdmin && (
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
             <Plus size={18} /> Add New Vendor
           </button>
@@ -183,14 +184,16 @@ export default function Vendors({ user }) {
                                 <ShieldAlert size={16} />
                               </button>
                             )}
-                            <button 
-                              className="btn btn-outline" 
-                              style={{ padding: '6px', color: 'var(--accent-danger)', borderColor: 'var(--accent-danger)' }}
-                              title="Delete"
-                              onClick={() => handleStatusAction(v.id, 'delete')}
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            {isAdmin && (
+                              <button 
+                                className="btn btn-outline" 
+                                style={{ padding: '6px', color: 'var(--accent-danger)', borderColor: 'var(--accent-danger)' }}
+                                title="Delete"
+                                onClick={() => handleStatusAction(v.id, 'delete')}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       )}

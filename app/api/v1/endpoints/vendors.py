@@ -14,7 +14,7 @@ router = APIRouter(prefix="/vendors", tags=["Vendor Management"])
 def register_vendor(
     data: VendorCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(UserRole.PROCUREMENT_OFFICER, UserRole.PROCUREMENT_MANAGER, UserRole.ADMINISTRATOR)),
+    current_user: User = Depends(require_roles(UserRole.ADMINISTRATOR)),
 ):
     if db.query(Vendor).filter(Vendor.email == data.email).first():
         raise HTTPException(400, "Vendor email already registered")
@@ -110,7 +110,7 @@ def blacklist_vendor(
 def delete_vendor(
     vendor_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(UserRole.ADMINISTRATOR, UserRole.PROCUREMENT_MANAGER)),
+    current_user: User = Depends(require_roles(UserRole.ADMINISTRATOR)),
 ):
     v = db.query(Vendor).filter(Vendor.id == vendor_id).first()
     if not v:

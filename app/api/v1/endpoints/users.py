@@ -4,10 +4,33 @@ from typing import List
 from app.core.database import get_db
 from app.core.security import get_current_user, require_roles
 from app.models.all_models import User, UserRole
-from app.schemas.schemas import UserOut, UserUpdate
+from app.schemas.schemas import UserOut, UserUpdate, UserCreate
+from app.core.security import hash_password
 from app.utils.helpers import log_audit
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+
+@router.post("/", response_model=UserOut, status_code=201)
+def create_user(
+    data: UserCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.ADMINISTRATOR)),
+):
+    if db.query(User).filter(User.email == data.email).first():
+        raise HTTPException(400, "Email already registered")
+    user = User(
+        email=data.email,
+        full_name=data.full_name,
+        hashed_password=hash_password(data.password),
+        role=data.role,
+        department=data.department,
+    )
+    db.add(user)
+    log_audit(db, current_user.id, "CREATE_USER", "User")
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 @router.get("/", response_model=List[UserOut])
@@ -54,6 +77,6 @@ def deactivate_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
-    user.is_active = False
-    log_audit(db, current_user.id, "DEACTIVATE_USER", "User", user_id)
+    db.delete(user)
+    log_audit(db, current_user.id, "DELETE_USER", "User", user_id)
     db.commit()
