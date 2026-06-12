@@ -381,7 +381,7 @@ export default function Dashboard({ user, onLogout }) {
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user?.department}</div>
             </div>
           </div>
-          <button onClick={onLogout} className="btn" style={{ 
+          <button onClick={onLogout} style={{ 
             padding: '10px 20px', 
             background: 'rgba(239, 68, 68, 0.15)', 
             color: 'var(--accent-danger)', 
@@ -390,7 +390,9 @@ export default function Dashboard({ user, onLogout }) {
             alignItems: 'center',
             gap: '8px',
             borderRadius: '12px',
-            fontWeight: '600'
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'none'
           }}>
             <LogOut size={18} /> Sign Out
           </button>
