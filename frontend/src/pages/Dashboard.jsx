@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ShoppingCart, FileText, PackageOpen, Users as UsersIcon, ArrowUpRight, ArrowDownRight, Bell, Star } from 'lucide-react';
+import { ShoppingCart, FileText, PackageOpen, Users as UsersIcon, ArrowUpRight, ArrowDownRight, Bell, Star, LogOut } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import Requisitions from './Requisitions';
 import PurchaseOrders from './PurchaseOrders';
@@ -221,20 +221,6 @@ function DashboardHome({ user }) {
           <h1 style={{ fontSize: '2rem', marginBottom: '8px' }}>Dashboard Overview</h1>
           <p style={{ color: 'var(--text-secondary)' }}>Welcome back, {user.full_name}. Here's what's happening today.</p>
         </div>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          <button className="btn btn-outline" style={{ padding: '8px', borderRadius: '50%' }}>
-            <Bell size={20} />
-          </button>
-          <div className="user-profile">
-            <div className="avatar" style={{ width: '36px', height: '36px' }}>
-              {user.full_name.charAt(0)}
-            </div>
-            <div>
-              <div style={{ fontWeight: 600 }}>{user.full_name.split(' ')[0]}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user.department}</div>
-            </div>
-          </div>
-        </div>
       </div>
 
       {loading ? (
@@ -370,6 +356,32 @@ export default function Dashboard({ user, onLogout }) {
     <div className="layout">
       <Sidebar user={user} onLogout={onLogout} />
       <main className="main-content">
+        {/* Global Topbar */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '32px', gap: '16px' }}>
+          <div className="user-profile">
+            <div className="avatar" style={{ width: '36px', height: '36px' }}>
+              {user?.full_name?.charAt(0)}
+            </div>
+            <div>
+              <div style={{ fontWeight: 600 }}>{user?.full_name?.split(' ')[0]}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user?.department}</div>
+            </div>
+          </div>
+          <button onClick={onLogout} className="btn" style={{ 
+            padding: '10px 20px', 
+            background: 'rgba(239, 68, 68, 0.15)', 
+            color: 'var(--accent-danger)', 
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            borderRadius: '12px',
+            fontWeight: '600'
+          }}>
+            <LogOut size={18} /> Sign Out
+          </button>
+        </div>
+
         <Routes>
           {isVendor ? (
             <>
