@@ -275,11 +275,8 @@ function App() {
                       </p>
                       <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '8px' }}>
                         <SignInButton mode="modal">
-                          <button className="btn btn-primary" style={{ flex: 1 }}>Sign In</button>
+                          <button className="btn btn-primary" style={{ width: '100%', maxWidth: '250px' }}>Sign In</button>
                         </SignInButton>
-                        <SignUpButton mode="modal">
-                          <button className="btn btn-outline" style={{ flex: 1 }}>Sign Up</button>
-                        </SignUpButton>
                       </div>
                     </div>
                   )}

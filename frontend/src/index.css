@@ -394,3 +394,8 @@ tr:hover td {
   justify-content: center;
   font-weight: bold;
 }
+
+select option {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
