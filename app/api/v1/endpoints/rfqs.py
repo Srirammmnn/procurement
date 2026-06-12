@@ -8,7 +8,7 @@ from app.models.all_models import (
     PurchaseRequisition, RFQStatus, RequisitionStatus, VendorStatus, UserRole
 )
 from app.schemas.schemas import RFQCreate, RFQOut, QuotationCreate, QuotationOut
-from app.utils.helpers import generate_number, log_audit
+from app.utils.helpers import generate_number, log_audit, send_rfq_email
 
 router = APIRouter(prefix="/rfqs", tags=["RFQ Management"])
 
@@ -72,11 +72,37 @@ def publish_rfq(
     rfq.status = RFQStatus.PUBLISHED
     db.commit()
     db.refresh(rfq)
+
+    # Notify invited vendors
+    for rfq_vendor in rfq.vendors:
+        vendor = rfq_vendor.vendor
+        if vendor and vendor.email:
+            send_rfq_email(
+                rfq_number=rfq.rfq_number,
+                rfq_title=rfq.title,
+                vendor_email=vendor.email,
+                deadline=rfq.submission_deadline.strftime("%Y-%m-%d"),
+                description=rfq.description,
+                sender_email=current_user.email,
+                db=db
+            )
+
     return rfq
 
 
 @router.get("/", response_model=List[RFQOut])
 def list_rfqs(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role == UserRole.VENDOR:
+        vendor = db.query(Vendor).filter(Vendor.email == current_user.email).first()
+        if not vendor:
+            return []
+        return (
+            db.query(RFQ)
+            .join(RFQVendor)
+            .filter(RFQVendor.vendor_id == vendor.id, RFQ.status != RFQStatus.DRAFT)
+            .order_by(RFQ.created_at.desc())
+            .all()
+        )
     return db.query(RFQ).order_by(RFQ.created_at.desc()).all()
 
 
@@ -104,9 +130,16 @@ def submit_quotation(
     if not rfq:
         raise HTTPException(404, "RFQ not found or not published")
 
+    v_id = data.vendor_id
+    if current_user.role == UserRole.VENDOR:
+        vendor = db.query(Vendor).filter(Vendor.email == current_user.email).first()
+        if not vendor:
+            raise HTTPException(403, "No active vendor profile found for this user")
+        v_id = vendor.id
+
     q = Quotation(
         rfq_id=rfq_id,
-        vendor_id=data.rfq_id,  # should be vendor_id in real impl; keeping flexible
+        vendor_id=v_id,
         quote_number=_gen_quote_number(db),
         total_amount=data.total_amount,
         currency=data.currency,
@@ -127,7 +160,7 @@ def submit_quotation(
         ))
 
     # Mark vendor as responded
-    inv = db.query(RFQVendor).filter(RFQVendor.rfq_id == rfq_id).first()
+    inv = db.query(RFQVendor).filter(RFQVendor.rfq_id == rfq_id, RFQVendor.vendor_id == v_id).first()
     if inv:
         inv.responded = True
 

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { PackageOpen, Star, X } from 'lucide-react';
 
-const API_URL = 'http://localhost:8000/api/v1';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/v1';
 
 export default function PurchaseOrders({ user }) {
+  const navigate = useNavigate();
   const [pos, setPos] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -45,6 +47,7 @@ export default function PurchaseOrders({ user }) {
   const canSubmitOrIssue = user && ['procurement_officer', 'procurement_manager', 'administrator'].includes(user.role);
   const canCancel = user && ['procurement_manager', 'administrator'].includes(user.role);
   const canAmend = user && ['procurement_officer', 'procurement_manager', 'administrator'].includes(user.role);
+  const isAP = !user || ['accounts_payable', 'administrator'].includes(user.role);
 
   const fetchPOs = async () => {
     try {
@@ -89,13 +92,38 @@ export default function PurchaseOrders({ user }) {
 
   const handleIssuePo = async (id) => {
     try {
-      await axios.post(`${API_URL}/purchase-orders/${id}/issue`, {}, {
+      const res = await axios.post(`${API_URL}/purchase-orders/${id}/issue`, {}, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
-      alert('PO issued to vendor successfully!');
+      if (res.data.email_sent) {
+        alert('PO issued and email sent to vendor successfully!');
+      } else {
+        alert('PO issued, but vendor email failed to send. Please check your SMTP settings in the Settings page.');
+      }
       fetchPOs();
     } catch (err) {
       alert('Failed to issue PO.');
+    }
+  };
+
+  const handleApproveAndIssuePo = async (id) => {
+    try {
+      // 1. Approve
+      await axios.post(`${API_URL}/purchase-orders/${id}/approve`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      // 2. Issue
+      const res = await axios.post(`${API_URL}/purchase-orders/${id}/issue`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (res.data.email_sent) {
+        alert('PO approved, issued, and email sent to vendor successfully!');
+      } else {
+        alert('PO approved and issued, but vendor email failed to send. Please check your SMTP settings in the Settings page.');
+      }
+      fetchPOs();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to approve and issue PO.');
     }
   };
 
@@ -341,7 +369,14 @@ export default function PurchaseOrders({ user }) {
                     <tr key={po.id}>
                       <td style={{ fontWeight: 500 }}>{po.po_number}</td>
                       <td>${po.total_amount} {po.currency}</td>
-                      <td><span className={`badge ${getStatusBadgeClass(po.status)}`}>{po.status}</span></td>
+                      <td>
+                        <span className={`badge ${getStatusBadgeClass(po.status)}`}>{po.status}</span>
+                        {!['draft', 'pending_approval', 'approved'].includes(po.status) && (
+                          <div style={{ fontSize: '0.75rem', marginTop: '4px', color: po.vendor_email_sent ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
+                            {po.vendor_email_sent ? '📧 Email Sent' : '📧 Email Failed'}
+                          </div>
+                        )}
+                      </td>
                       <td>
                         {po.amendment_count > 0 ? (
                           <span 
@@ -366,14 +401,24 @@ export default function PurchaseOrders({ user }) {
                               Submit
                             </button>
                           )}
-                          {po.status === 'pending_approval' && canApprove && (
-                            <button
-                              className="btn btn-primary"
-                              style={{ padding: '4px 8px', fontSize: '0.8rem' }}
-                              onClick={() => handleApprovePo(po.id)}
-                            >
-                              Approve
-                            </button>
+                           {po.status === 'pending_approval' && canApprove && (
+                            user && user.role === 'procurement_manager' ? (
+                              <button
+                                className="btn btn-primary"
+                                style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                                onClick={() => handleApproveAndIssuePo(po.id)}
+                              >
+                                Approve & Issue
+                              </button>
+                            ) : (
+                              <button
+                                className="btn btn-primary"
+                                style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                                onClick={() => handleApprovePo(po.id)}
+                              >
+                                Approve
+                              </button>
+                            )
                           )}
                           {po.status === 'approved' && canSubmitOrIssue && (
                             <button
@@ -400,6 +445,15 @@ export default function PurchaseOrders({ user }) {
                               onClick={() => openGrnModal(po)}
                             >
                               Receive Goods
+                            </button>
+                          )}
+                          {['partially_delivered', 'fully_delivered'].includes(po.status) && isAP && (
+                            <button
+                              className="btn btn-primary"
+                              style={{ padding: '4px 8px', fontSize: '0.8rem', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' }}
+                              onClick={() => navigate('/invoices', { state: { poId: po.id } })}
+                            >
+                              Log Invoice
                             </button>
                           )}
                           {['issued', 'partially_delivered', 'fully_delivered'].includes(po.status) && isProcurement && (

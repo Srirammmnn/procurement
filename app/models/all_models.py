@@ -19,6 +19,7 @@ class UserRole(str, enum.Enum):
     ACCOUNTS_PAYABLE = "accounts_payable"
     ADMINISTRATOR = "administrator"
     AUDITOR = "auditor"
+    VENDOR = "vendor"
 
 
 class RequisitionStatus(str, enum.Enum):
@@ -484,3 +485,11 @@ class AuditLog(Base):
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
 
     user = relationship("User", back_populates="audit_logs")
+
+
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+
+    key = Column(String(100), primary_key=True)
+    value = Column(Text, nullable=False)
+

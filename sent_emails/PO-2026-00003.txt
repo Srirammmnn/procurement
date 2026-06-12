@@ -1,5 +1,5 @@
 To: amend_vendor_unique@test.com
-From: noreply@company.com
+From: amend_po@example.com
 Subject: Purchase Order Issued: PO-2026-00003
 ========================================
 Dear Vendor,

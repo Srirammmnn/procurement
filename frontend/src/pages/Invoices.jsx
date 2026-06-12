@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { FileText, CheckCircle, AlertCircle, DollarSign, X, ArrowUpRight } from 'lucide-react';
 
-const API_URL = 'http://localhost:8000/api/v1';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/v1';
 
 export default function Invoices({ user }) {
+  const location = useLocation();
   const [invoices, setInvoices] = useState([]);
   const [pos, setPos] = useState([]);
   const [grns, setGrns] = useState([]);
@@ -58,6 +60,24 @@ export default function Invoices({ user }) {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Handle redirected states (e.g. from Purchase Orders page after GRN is created)
+  useEffect(() => {
+    if (pos.length > 0 && location.state?.poId) {
+      const poId = location.state.poId;
+      const selectedPo = pos.find(p => p.id === parseInt(poId));
+      if (selectedPo) {
+        setInvoiceForm(prev => ({
+          ...prev,
+          po_id: poId.toString(),
+          vendor_id: selectedPo.vendor_id,
+          invoice_amount: selectedPo.total_amount,
+          currency: selectedPo.currency,
+        }));
+        setShowInvoiceModal(true);
+      }
+    }
+  }, [pos, location.state]);
 
   const handlePoChange = (poId) => {
     const selectedPo = pos.find(p => p.id === parseInt(poId));
@@ -249,9 +269,16 @@ export default function Invoices({ user }) {
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {inv.status === 'mismatch' && (
-                            <span style={{ color: 'var(--accent-danger)', fontSize: '0.8rem', display: 'flex', gap: '4px', alignItems: 'center' }}>
-                              <AlertCircle size={14} /> {inv.mismatch_details}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'rgba(239, 68, 68, 0.05)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.15)', marginTop: '4px' }}>
+                              <span style={{ color: 'var(--accent-danger)', fontSize: '0.85rem', fontWeight: 600, display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                <AlertCircle size={14} /> Matching Discrepancies:
+                              </span>
+                              <ul style={{ margin: 0, paddingLeft: '16px', color: 'var(--text-secondary)', fontSize: '0.8rem', textAlign: 'left' }}>
+                                {inv.matching_result?.discrepancies?.map((desc, idx) => (
+                                  <li key={idx}>{desc}</li>
+                                )) || <li>{inv.mismatch_details}</li>}
+                              </ul>
+                            </div>
                           )}
                           <div style={{ display: 'flex', gap: '8px' }}>
                             {inv.status === 'matched' && isFinance && (

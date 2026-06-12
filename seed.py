@@ -151,6 +151,13 @@ def seed():
                 "role": UserRole.EMPLOYEE,
                 "department": "Engineering",
             },
+            {
+                "email": "sriramdhoni74@gmail.com",
+                "full_name": "Sriram Supplies",
+                "password": "PmsVendor2026!",
+                "role": UserRole.VENDOR,
+                "department": "Vendor Portal",
+            },
         ]
 
         # Add or update local DB users
@@ -188,6 +195,19 @@ def seed():
                 email="vendor@techsupplies.com",
                 phone="+1-555-0100",
                 country="USA",
+                category="IT Equipment",
+                status=VendorStatus.ACTIVE,
+            ))
+
+        # Sriram Vendor
+        if not db.query(Vendor).filter(Vendor.email == "sriramdhoni74@gmail.com").first():
+            db.add(Vendor(
+                vendor_code="VND-2026-00999",
+                company_name="Sriram Supplies",
+                contact_person="Sriram",
+                email="sriramdhoni74@gmail.com",
+                phone="+91-99999-88888",
+                country="India",
                 category="IT Equipment",
                 status=VendorStatus.ACTIVE,
             ))

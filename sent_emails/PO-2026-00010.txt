@@ -1,17 +1,16 @@
-To: grn_vendor_unique@test.com
-From: grn_po@example.com
-Subject: Purchase Order Issued: PO-2026-00004
+To: sriramdhoni74@gmail.com
+From: procmgr@company.com
+Subject: Purchase Order Issued: PO-2026-00010
 ========================================
 Dear Vendor,
 
 We are pleased to issue the following Purchase Order to you:
 
-PO Number: PO-2026-00004
-Total Amount: 1000.0 USD
+PO Number: PO-2026-00010
+Total Amount: 11.0 USD
 
 Items Ordered:
-- Item A: 10.00 pcs @ 50.00 each
-- Item B: 10.00 pcs @ 50.00 each
+- mouse: 11.00 pcs @ 1.00 each
 
 Please prepare the delivery according to the agreed terms.
 

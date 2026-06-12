@@ -6,7 +6,8 @@ from app.core.database import get_db
 from app.core.security import get_current_user, require_roles
 from app.models.all_models import (
     User, Invoice, Payment, PurchaseOrder, GoodsReceiptNote,
-    InvoiceStatus, PaymentStatus, UserRole, Budget, PurchaseRequisition
+    InvoiceStatus, PaymentStatus, UserRole, Budget, PurchaseRequisition,
+    POItem, GRNItem
 )
 from app.schemas.schemas import InvoiceCreate, InvoiceOut, PaymentCreate, PaymentUpdate, PaymentOut
 from app.utils.helpers import generate_number, log_audit
@@ -63,22 +64,63 @@ def _three_way_match(db: Session, invoice: Invoice) -> dict:
     if not po:
         return {"matched": False, "discrepancies": ["PO not found"]}
 
-    # Check 1: Invoice amount vs PO amount (tolerance 1%)
     po_amount = float(po.total_amount)
     inv_amount = float(invoice.invoice_amount)
+
+    # Check 1: Invoice amount vs PO amount (tolerance 1%)
     tolerance = po_amount * 0.01
     if abs(inv_amount - po_amount) > tolerance:
         discrepancies.append(
-            f"Amount mismatch: Invoice={inv_amount}, PO={po_amount}"
+            f"Amount mismatch with PO: Invoice={inv_amount}, PO={po_amount}"
         )
 
-    # Check 2: Goods Receipt exists
+    # Check 2: Goods Receipt Note check
     if invoice.grn_id:
         grn = db.query(GoodsReceiptNote).filter(GoodsReceiptNote.id == invoice.grn_id).first()
         if not grn:
             discrepancies.append("GRN not found")
         elif grn.po_id != invoice.po_id:
             discrepancies.append("GRN does not belong to this PO")
+        else:
+            # Check individual items and quantities
+            po_items = db.query(POItem).filter(POItem.po_id == po.id).all()
+            grn_items = db.query(GRNItem).filter(GRNItem.grn_id == grn.id).all()
+
+            po_item_map = {item.id: item for item in po_items}
+            total_accepted_value = 0.0
+
+            for grn_item in grn_items:
+                po_item = po_item_map.get(grn_item.po_item_id)
+                if po_item:
+                    qty_accepted = float(grn_item.quantity_accepted)
+                    qty_ordered = float(po_item.quantity)
+                    unit_price = float(po_item.unit_price)
+
+                    total_accepted_value += qty_accepted * unit_price
+
+                    # Verify quantities match
+                    if qty_accepted != qty_ordered:
+                        discrepancies.append(
+                            f"Qty mismatch for '{po_item.item_description}': Ordered={qty_ordered}, Accepted={qty_accepted}"
+                        )
+
+                    # Verify if there were rejected items
+                    qty_rejected = float(grn_item.quantity_rejected)
+                    if qty_rejected > 0:
+                        discrepancies.append(
+                            f"Rejected items in '{po_item.item_description}': Rejected={qty_rejected}"
+                        )
+                else:
+                    discrepancies.append(
+                        f"GRN item '{grn_item.item_description}' is not part of PO"
+                    )
+
+            # Check 3: Invoice amount vs GRN accepted value (tolerance 1%)
+            accepted_tolerance = total_accepted_value * 0.01
+            if abs(inv_amount - total_accepted_value) > accepted_tolerance:
+                discrepancies.append(
+                    f"Amount mismatch with GRN accepted value: Invoice={inv_amount}, Accepted Value={total_accepted_value:.2f}"
+                )
     else:
         discrepancies.append("No GRN linked — goods receipt unconfirmed")
 

@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth, users, budgets, requisitions,
     approvals, vendors, rfqs, purchase_orders,
-    grns, invoices, reports, audit
+    grns, invoices, reports, audit, settings
 )
 
 api_router = APIRouter()
@@ -20,3 +20,4 @@ api_router.include_router(invoices.router)
 api_router.include_router(invoices.payment_router)
 api_router.include_router(reports.router)
 api_router.include_router(audit.router)
+api_router.include_router(settings.router)

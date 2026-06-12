@@ -9,11 +9,18 @@ import {
   PackageOpen,
   CheckSquare,
   Building2,
-  Receipt
+  Receipt,
+  CreditCard
 } from 'lucide-react';
 
 export default function Sidebar({ user, onLogout }) {
   const getNavLinks = () => {
+    if (user?.role?.toLowerCase() === 'vendor') {
+      return [
+        { path: '/rfqs', icon: <FileText size={20} />, label: 'My RFQ Bids' }
+      ];
+    }
+
     const base = [
       { path: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
       { path: '/requisitions', icon: <ShoppingCart size={20} />, label: 'Requisitions' },
@@ -32,11 +39,18 @@ export default function Sidebar({ user, onLogout }) {
     }
 
     if (['finance_officer', 'accounts_payable', 'administrator', 'auditor'].includes(user.role.toLowerCase())) {
-      base.push({ path: '/invoices', icon: <Receipt size={20} />, label: 'Invoices & Payments' });
+      base.push(
+        { path: '/invoices', icon: <Receipt size={20} />, label: 'Invoices & Matching' },
+        { path: '/payments', icon: <CreditCard size={20} />, label: 'Payment Ledger' }
+      );
     }
 
     if (user.role.toLowerCase() === 'administrator') {
       base.push({ path: '/users', icon: <Users size={20} />, label: 'User Management' });
+    }
+
+    if (['administrator', 'procurement_manager'].includes(user.role.toLowerCase())) {
+      base.push({ path: '/settings', icon: <Settings size={20} />, label: 'Settings' });
     }
 
     return base;

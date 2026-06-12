@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { ShoppingCart, FileText, PackageOpen, Users as UsersIcon, ArrowUpRight, ArrowDownRight, Bell, Star } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import Requisitions from './Requisitions';
@@ -8,10 +8,12 @@ import Users from './Users';
 import Vendors from './Vendors';
 import Approvals from './Approvals';
 import Invoices from './Invoices';
+import Payments from './Payments';
 import RFQs from './RFQs';
+import Settings from './Settings';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api/v1';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/v1';
 
 function SpendByDepartmentChart({ data }) {
   const [hoveredBar, setHoveredBar] = useState(null);
@@ -362,30 +364,43 @@ function DashboardHome({ user }) {
 }
 
 export default function Dashboard({ user, onLogout }) {
+  const isVendor = user?.role?.toLowerCase() === 'vendor';
+
   return (
     <div className="layout">
       <Sidebar user={user} onLogout={onLogout} />
       <main className="main-content">
         <Routes>
-          <Route path="/" element={<DashboardHome user={user} />} />
-          <Route path="/requisitions" element={<Requisitions user={user} />} />
-          <Route path="/purchase-orders" element={<PurchaseOrders user={user} />} />
-          <Route path="/users" element={<Users />} />
-          <Route path="/vendors" element={<Vendors />} />
-          <Route path="/approvals" element={<Approvals />} />
-          <Route path="/invoices" element={<Invoices />} />
-          <Route path="/rfqs" element={<RFQs />} />
-          <Route path="*" element={
-            <div className="animate-in" style={{ textAlign: 'center', padding: '100px 0' }}>
-              <div style={{ display: 'inline-flex', padding: '24px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-primary)', marginBottom: '24px' }}>
-                <FileText size={48} />
-              </div>
-              <h2 style={{ fontSize: '2rem', marginBottom: '16px' }}>Coming Soon</h2>
-              <p style={{ color: 'var(--text-secondary)', maxWidth: '400px', margin: '0 auto' }}>
-                This module is currently under development. Please check back later.
-              </p>
-            </div>
-          } />
+          {isVendor ? (
+            <>
+              <Route path="/rfqs" element={<RFQs user={user} />} />
+              <Route path="*" element={<Navigate to="/rfqs" replace />} />
+            </>
+          ) : (
+            <>
+              <Route path="/" element={<DashboardHome user={user} />} />
+              <Route path="/requisitions" element={<Requisitions user={user} />} />
+              <Route path="/purchase-orders" element={<PurchaseOrders user={user} />} />
+              <Route path="/users" element={<Users />} />
+              <Route path="/vendors" element={<Vendors />} />
+              <Route path="/approvals" element={<Approvals />} />
+              <Route path="/invoices" element={<Invoices />} />
+              <Route path="/payments" element={<Payments user={user} />} />
+              <Route path="/rfqs" element={<RFQs user={user} />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="*" element={
+                <div className="animate-in" style={{ textAlign: 'center', padding: '100px 0' }}>
+                  <div style={{ display: 'inline-flex', padding: '24px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-primary)', marginBottom: '24px' }}>
+                    <FileText size={48} />
+                  </div>
+                  <h2 style={{ fontSize: '2rem', marginBottom: '16px' }}>Coming Soon</h2>
+                  <p style={{ color: 'var(--text-secondary)', maxWidth: '400px', margin: '0 auto' }}>
+                    This module is currently under development. Please check back later.
+                  </p>
+                </div>
+              } />
+            </>
+          )}
         </Routes>
       </main>
     </div>

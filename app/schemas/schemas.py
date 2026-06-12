@@ -227,6 +227,7 @@ class QuotationItemCreate(BaseModel):
 
 class QuotationCreate(BaseModel):
     rfq_id: int
+    vendor_id: int
     total_amount: Decimal
     currency: str = "USD"
     delivery_days: Optional[int] = None
@@ -312,6 +313,7 @@ class POOut(BaseModel):
     payment_terms: Optional[str] = None
     terms_conditions: Optional[str] = None
     po_issued_at: Optional[datetime]
+    vendor_email_sent: Optional[bool] = False
     amendment_count: int
     created_at: datetime
     items: List[POItemOut] = []
@@ -385,11 +387,17 @@ class InvoiceOut(BaseModel):
     id: int
     invoice_number: str
     po_id: int
-    vendor_id: Optional[int]
+    grn_id: Optional[int] = None
+    vendor_id: Optional[int] = None
     invoice_amount: Decimal
+    currency: str = "USD"
     status: InvoiceStatus
     invoice_date: datetime
-    matching_result: Optional[Any]
+    due_date: Optional[datetime] = None
+    matching_result: Optional[Any] = None
+    mismatch_details: Optional[str] = None
+    approved_by: Optional[int] = None
+    approved_at: Optional[datetime] = None
     created_at: datetime
 
     class Config:
@@ -419,8 +427,13 @@ class PaymentOut(BaseModel):
     payment_reference: str
     invoice_id: int
     amount: Decimal
+    currency: str = "USD"
     status: PaymentStatus
-    payment_date: Optional[datetime]
+    payment_method: Optional[str] = None
+    payment_date: Optional[datetime] = None
+    bank_reference: Optional[str] = None
+    processed_by: Optional[int] = None
+    remarks: Optional[str] = None
     created_at: datetime
 
     class Config:

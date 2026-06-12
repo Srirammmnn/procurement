@@ -78,12 +78,37 @@ def get_approval_levels(amount: float) -> list:
         return [UserRole.MANAGER, UserRole.PROCUREMENT_MANAGER, UserRole.FINANCE_OFFICER, UserRole.ADMINISTRATOR]
 
 
-def send_po_email(po_number: str, vendor_email: str, total_amount: float, currency: str, items_info: str) -> bool:
+def get_all_settings(db) -> dict:
+    from app.models.all_models import SystemSetting
+    if db is None:
+        return {}
+    try:
+        settings_list = db.query(SystemSetting).all()
+        return {s.key: s.value for s in settings_list}
+    except Exception as e:
+        print(f"[WARN] Failed to query system_settings: {str(e)}")
+        return {}
+
+
+def send_po_email(po_number: str, vendor_email: str, total_amount: float, currency: str, items_info: str, sender_email: str = None, db = None) -> bool:
     import smtplib
     import os
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
     from app.core.config import settings
+    
+    # Load from DB settings, fall back to environment settings
+    db_settings = get_all_settings(db)
+    mail_server = db_settings.get("MAIL_SERVER") or settings.MAIL_SERVER
+    mail_port = db_settings.get("MAIL_PORT") or settings.MAIL_PORT
+    mail_username = db_settings.get("MAIL_USERNAME") or settings.MAIL_USERNAME
+    mail_password = db_settings.get("MAIL_PASSWORD") or settings.MAIL_PASSWORD
+    mail_from = sender_email or db_settings.get("MAIL_FROM") or settings.MAIL_FROM or mail_username
+
+    try:
+        mail_port = int(mail_port) if mail_port else 587
+    except ValueError:
+        mail_port = 587
     
     body = f"""Dear Vendor,
 
@@ -109,7 +134,7 @@ Procurement Team
         filepath = os.path.join(sent_emails_dir, f"{po_number}.txt")
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(f"To: {vendor_email}\n")
-            f.write(f"From: {settings.MAIL_FROM or 'noreply@company.com'}\n")
+            f.write(f"From: {mail_from or 'noreply@company.com'}\n")
             f.write(f"Subject: Purchase Order Issued: {po_number}\n")
             f.write("="*40 + "\n")
             f.write(body)
@@ -117,34 +142,138 @@ Procurement Team
     except Exception as e:
         print(f"[WARN] Failed to write PO email to file: {str(e)}")
 
-    if not settings.MAIL_SERVER or "company.com" in settings.MAIL_SERVER or not settings.MAIL_USERNAME:
-        print(f"[WARN] Real SMTP settings not configured. Simulated email successfully saved locally.")
-        return True
+    is_placeholder = (
+        not mail_server 
+        or "company.com" in mail_server 
+        or not mail_username 
+        or "your_gmail_username" in mail_username
+        or not mail_password
+        or "your_gmail_app_password" in mail_password
+    )
+
+    if is_placeholder:
+        print(f"[WARN] Real SMTP settings not configured (placeholder credentials detected). Simulated email successfully saved locally.")
+        return False
         
     try:
         msg = MIMEMultipart()
-        msg["From"] = settings.MAIL_FROM or settings.MAIL_USERNAME
+        msg["From"] = mail_from or mail_username
         msg["To"] = vendor_email
         msg["Subject"] = f"Purchase Order Issued: {po_number}"
         msg.attach(MIMEText(body, "plain"))
         
         # Connect to SMTP server
-        if settings.MAIL_PORT == 465:
-            server = smtplib.SMTP_SSL(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=5)
+        if mail_port == 465:
+            server = smtplib.SMTP_SSL(mail_server, mail_port, timeout=5)
         else:
-            server = smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=5)
+            server = smtplib.SMTP(mail_server, mail_port, timeout=5)
             server.ehlo()
-            if settings.MAIL_PORT == 587:
+            if mail_port == 587:
                 server.starttls()
                 server.ehlo()
                 
-        if settings.MAIL_PASSWORD:
-            server.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
+        if mail_password:
+            server.login(mail_username, mail_password)
             
         server.sendmail(msg["From"], [msg["To"]], msg.as_string())
         server.quit()
         print(f"[OK] Email sent to vendor: {vendor_email} for PO {po_number}")
         return True
     except Exception as e:
-        print(f"[ERROR] Failed to send email via SMTP (using local file backup): {str(e)}")
+        print(f"[ERROR] Failed to send email via SMTP: {str(e)}")
+        return False
+
+
+def send_rfq_email(rfq_number: str, rfq_title: str, vendor_email: str, deadline: str, description: str, sender_email: str = None, db = None) -> bool:
+    import smtplib
+    import os
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    from app.core.config import settings
+
+    db_settings = get_all_settings(db)
+    mail_server = db_settings.get("MAIL_SERVER") or settings.MAIL_SERVER
+    mail_port = db_settings.get("MAIL_PORT") or settings.MAIL_PORT
+    mail_username = db_settings.get("MAIL_USERNAME") or settings.MAIL_USERNAME
+    mail_password = db_settings.get("MAIL_PASSWORD") or settings.MAIL_PASSWORD
+    mail_from = sender_email or db_settings.get("MAIL_FROM") or settings.MAIL_FROM or mail_username
+
+    try:
+        mail_port = int(mail_port) if mail_port else 587
+    except ValueError:
+        mail_port = 587
+
+    body = f"""Dear Vendor,
+
+You are invited to submit a quotation for the following Request for Quotation (RFQ):
+
+RFQ Number: {rfq_number}
+Title: {rfq_title}
+Submission Deadline: {deadline}
+
+Description:
+{description or 'No description provided.'}
+
+Please log in to the portal or submit your bid details before the deadline.
+
+Best regards,
+Procurement Team
+"""
+
+    # Local file log for development
+    try:
+        sent_emails_dir = "sent_emails"
+        if not os.path.exists(sent_emails_dir):
+            os.makedirs(sent_emails_dir)
+        filepath = os.path.join(sent_emails_dir, f"{rfq_number}_{vendor_email}.txt")
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(f"To: {vendor_email}\n")
+            f.write(f"From: {mail_from or 'noreply@company.com'}\n")
+            f.write(f"Subject: Invitation to Bid: {rfq_title} ({rfq_number})\n")
+            f.write("="*40 + "\n")
+            f.write(body)
+        print(f"[OK] Saved RFQ email invitation to local file: {filepath}")
+    except Exception as e:
+        print(f"[WARN] Failed to write RFQ email to file: {str(e)}")
+
+    is_placeholder = (
+        not mail_server 
+        or "company.com" in mail_server 
+        or not mail_username 
+        or "your_gmail_username" in mail_username
+        or not mail_password
+        or "your_gmail_app_password" in mail_password
+    )
+
+    if is_placeholder:
+        print(f"[WARN] Real SMTP settings not configured (placeholder credentials). Simulated RFQ email successfully saved locally.")
         return True
+
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = mail_from or mail_username
+        msg["To"] = vendor_email
+        msg["Subject"] = f"Invitation to Bid: {rfq_title} ({rfq_number})"
+        msg.attach(MIMEText(body, "plain"))
+        
+        # Connect to SMTP server
+        if mail_port == 465:
+            server = smtplib.SMTP_SSL(mail_server, mail_port, timeout=5)
+        else:
+            server = smtplib.SMTP(mail_server, mail_port, timeout=5)
+            server.ehlo()
+            if mail_port == 587:
+                server.starttls()
+                server.ehlo()
+                
+        if mail_password:
+            server.login(mail_username, mail_password)
+            
+        server.sendmail(msg["From"], [msg["To"]], msg.as_string())
+        server.quit()
+        print(f"[OK] RFQ invitation sent to: {vendor_email}")
+        return True
+    except Exception as e:
+        print(f"[ERROR] Failed to send RFQ email: {str(e)}")
+        return False
+

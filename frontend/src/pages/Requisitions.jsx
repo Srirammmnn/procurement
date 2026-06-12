@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Plus, X, ShoppingCart } from 'lucide-react';
 
-const API_URL = 'http://localhost:8000/api/v1';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/v1';
 
 export default function Requisitions({ user }) {
   const [reqs, setReqs] = useState([]);

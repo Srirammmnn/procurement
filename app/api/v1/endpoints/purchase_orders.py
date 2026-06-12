@@ -143,7 +143,9 @@ def issue_po(
             vendor_email=vendor.email,
             total_amount=float(po.total_amount),
             currency=po.currency or "USD",
-            items_info=items_info
+            items_info=items_info,
+            sender_email=current_user.email,
+            db=db
         )
     po.vendor_email_sent = email_success
     

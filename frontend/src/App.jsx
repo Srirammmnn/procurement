@@ -4,6 +4,8 @@ import { SignInButton, SignUpButton, useAuth } from '@clerk/clerk-react';
 import { Eye, EyeOff } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/v1';
+
 function App() {
   const { isLoaded, isSignedIn, signOut, getToken } = useAuth();
   const [dbUser, setDbUser] = useState(null);
@@ -24,7 +26,7 @@ function App() {
           const token = await getToken();
           if (token) {
             localStorage.setItem('token', token);
-            const response = await fetch('http://localhost:8000/api/v1/auth/me', {
+            const response = await fetch(`${API_URL}/auth/me`, {
               headers: {
                 'Authorization': `Bearer ${token}`
               }
@@ -43,7 +45,7 @@ function App() {
         // Fallback: check for local database token
         const localToken = localStorage.getItem('token');
         if (localToken) {
-          const response = await fetch('http://localhost:8000/api/v1/auth/me', {
+          const response = await fetch(`${API_URL}/auth/me`, {
             headers: {
               'Authorization': `Bearer ${localToken}`
             }
@@ -80,7 +82,7 @@ function App() {
       formData.append('username', email);
       formData.append('password', password);
 
-      const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -93,7 +95,7 @@ function App() {
         localStorage.setItem('token', data.access_token);
         
         // Fetch profile
-        const profileResponse = await fetch('http://localhost:8000/api/v1/auth/me', {
+        const profileResponse = await fetch(`${API_URL}/auth/me`, {
           headers: {
             'Authorization': `Bearer ${data.access_token}`
           }
