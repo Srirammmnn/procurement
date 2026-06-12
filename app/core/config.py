@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     VITE_CLERK_PUBLISHABLE_KEY: Optional[str] = None
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: Optional[str] = None
     
-    RAZORPAY_KEY_ID: str = "rzp_test_dummykey"
+    RAZORPAY_KEY_ID: str = "rzp_test_T0cUaqBftS7Tko"
     RAZORPAY_KEY_SECRET: str = "dummysecret"
 
     class Config:
