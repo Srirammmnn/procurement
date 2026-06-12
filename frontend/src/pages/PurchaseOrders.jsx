@@ -74,7 +74,8 @@ export default function PurchaseOrders({ user }) {
       alert('PO submitted for approval successfully!');
       fetchPOs();
     } catch (err) {
-      alert('Failed to submit PO.');
+      const detail = err.response?.data?.detail || err.message || 'Unknown error';
+      alert(`Failed to submit PO: ${detail}`);
     }
   };
 
@@ -86,7 +87,8 @@ export default function PurchaseOrders({ user }) {
       alert('PO approved successfully!');
       fetchPOs();
     } catch (err) {
-      alert('Failed to approve PO.');
+      const detail = err.response?.data?.detail || err.message || 'Unknown error';
+      alert(`Failed to approve PO: ${detail}`);
     }
   };
 
@@ -102,7 +104,8 @@ export default function PurchaseOrders({ user }) {
       }
       fetchPOs();
     } catch (err) {
-      alert('Failed to issue PO.');
+      const detail = err.response?.data?.detail || err.message || 'Unknown error';
+      alert(`Failed to issue PO: ${detail}`);
     }
   };
 
