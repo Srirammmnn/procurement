@@ -357,7 +357,21 @@ export default function Dashboard({ user, onLogout }) {
       <Sidebar user={user} onLogout={onLogout} />
       <main className="main-content">
         {/* Global Topbar */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '32px', gap: '16px' }}>
+        <div style={{ 
+          position: 'fixed', 
+          top: '24px', 
+          right: '32px', 
+          zIndex: 1000,
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '16px',
+          background: 'rgba(10, 10, 15, 0.8)',
+          backdropFilter: 'blur(12px)',
+          padding: '8px 16px',
+          borderRadius: '20px',
+          border: '1px solid var(--glass-border)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+        }}>
           <div className="user-profile">
             <div className="avatar" style={{ width: '36px', height: '36px' }}>
               {user?.full_name?.charAt(0)}
