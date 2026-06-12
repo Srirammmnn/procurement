@@ -1,7 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import time
+import os
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.v1 import api_router
@@ -66,15 +68,30 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Include all routes
+# Include all API routes
 app.include_router(api_router, prefix="/api/v1")
-
-
-@app.get("/", tags=["Health"])
-def root():
-    return {"status": "ok", "app": settings.APP_NAME, "version": "1.0.0"}
 
 
 @app.get("/health", tags=["Health"])
 def health():
     return {"status": "healthy"}
+
+
+# Serve React frontend static files
+FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+
+if os.path.exists(FRONTEND_DIST):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")), name="assets")
+
+    @app.get("/", include_in_schema=False)
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_frontend(full_path: str = ""):
+        # Don't intercept API or docs routes
+        if full_path.startswith("api/") or full_path in ("docs", "redoc", "openapi.json", "health"):
+            return JSONResponse(status_code=404, content={"detail": "Not found"})
+        index = os.path.join(FRONTEND_DIST, "index.html")
+        return FileResponse(index)
+else:
+    @app.get("/", tags=["Health"])
+    def root():
+        return {"status": "ok", "app": settings.APP_NAME, "version": "1.0.0"}
