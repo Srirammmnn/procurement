@@ -56,6 +56,11 @@ export default function Payments({ user }) {
 
   useEffect(() => {
     fetchData();
+    // Load Razorpay Script
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
   }, []);
 
   const handleUpdateStatus = async (paymentId, newStatus) => {
@@ -73,6 +78,67 @@ export default function Payments({ user }) {
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.detail || 'Failed to update payment status.');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleRazorpayCheckout = async (payment) => {
+    setUpdatingStatus(true);
+    try {
+      const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
+      
+      // 1. Create order on backend
+      const orderRes = await axios.post(`${API_URL}/payments/create-razorpay-order`, {
+        payment_id: payment.id
+      }, { headers });
+
+      const orderData = orderRes.data;
+
+      // 2. Open Razorpay Checkout
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "ProcureHub Payments",
+        description: `Settlement for Payment Ref: ${payment.payment_reference}`,
+        order_id: orderData.razorpay_order_id,
+        handler: async function (response) {
+          try {
+            // 3. Verify on backend
+            await axios.post(`${API_URL}/payments/verify-razorpay-payment`, {
+              payment_id: payment.id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            }, { headers });
+            
+            alert('Payment successfully verified and settled!');
+            setShowDetailModal(false);
+            fetchData();
+          } catch (verificationError) {
+            console.error('Verification Error:', verificationError);
+            alert(verificationError.response?.data?.detail || 'Payment verification failed.');
+          }
+        },
+        prefill: {
+          name: user?.full_name || '',
+          email: user?.email || ''
+        },
+        theme: {
+          color: "#3b82f6"
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response){
+        alert(`Payment failed: ${response.error.description}`);
+      });
+      rzp.open();
+      
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.detail || 'Failed to initialize Razorpay checkout.');
     } finally {
       setUpdatingStatus(false);
     }
@@ -424,9 +490,9 @@ export default function Payments({ user }) {
                         className="btn btn-primary" 
                         style={{ background: 'var(--accent-success)' }}
                         disabled={updatingStatus}
-                        onClick={() => handleUpdateStatus(selectedPayment.id, 'paid')}
+                        onClick={() => handleRazorpayCheckout(selectedPayment)}
                       >
-                        Approve & Settle
+                        Approve & Settle via Razorpay
                       </button>
                     </>
                   )}

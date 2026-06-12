@@ -7,10 +7,13 @@ from app.core.security import get_current_user, require_roles
 from app.models.all_models import (
     User, Invoice, Payment, PurchaseOrder, GoodsReceiptNote,
     InvoiceStatus, PaymentStatus, UserRole, Budget, PurchaseRequisition,
-    POItem, GRNItem
+    POItem, GRNItem, POStatus
 )
 from app.schemas.schemas import InvoiceCreate, InvoiceOut, PaymentCreate, PaymentUpdate, PaymentOut
 from app.utils.helpers import generate_number, log_audit
+from app.core.config import settings
+import razorpay
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/invoices", tags=["Invoice & Payment"])
 payment_router = APIRouter(prefix="/payments", tags=["Payments"])
@@ -246,3 +249,122 @@ def update_payment(
     db.commit()
     db.refresh(payment)
     return payment
+
+# ─────────────── RAZORPAY INTEGRATION ───────────────
+
+try:
+    razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+except Exception as e:
+    razorpay_client = None
+
+
+class RazorpayOrderRequest(BaseModel):
+    payment_id: int
+
+
+class RazorpayVerifyRequest(BaseModel):
+    payment_id: int
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+
+
+@payment_router.post("/create-razorpay-order")
+def create_razorpay_order(
+    data: RazorpayOrderRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.ACCOUNTS_PAYABLE, UserRole.FINANCE_OFFICER, UserRole.ADMINISTRATOR)),
+):
+    if not razorpay_client:
+        raise HTTPException(500, "Razorpay client not configured properly")
+
+    payment = db.query(Payment).filter(Payment.id == data.payment_id).first()
+    if not payment:
+        raise HTTPException(404, "Payment not found")
+        
+    if payment.status == PaymentStatus.PAID:
+        raise HTTPException(400, "Payment is already marked as paid")
+
+    # Amount in paise (multiply by 100)
+    amount_in_paise = int(float(payment.amount) * 100)
+
+    try:
+        # Create Order
+        razorpay_order = razorpay_client.order.create({
+            "amount": amount_in_paise,
+            "currency": payment.currency or "INR",
+            "receipt": payment.payment_reference,
+            "payment_capture": "1"
+        })
+        
+        # Save order ID to payment_reference or a dedicated field (using bank_reference temporarily)
+        payment.bank_reference = razorpay_order['id']
+        db.commit()
+
+        return {
+            "razorpay_order_id": razorpay_order['id'],
+            "amount": amount_in_paise,
+            "currency": razorpay_order['currency'],
+            "key_id": settings.RAZORPAY_KEY_ID
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Error creating Razorpay order: {str(e)}")
+
+
+@payment_router.post("/verify-razorpay-payment")
+def verify_razorpay_payment(
+    data: RazorpayVerifyRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.ACCOUNTS_PAYABLE, UserRole.FINANCE_OFFICER, UserRole.ADMINISTRATOR)),
+):
+    if not razorpay_client:
+        raise HTTPException(500, "Razorpay client not configured properly")
+
+    payment = db.query(Payment).filter(Payment.id == data.payment_id).first()
+    if not payment:
+        raise HTTPException(404, "Payment not found")
+
+    try:
+        # Verify Signature
+        razorpay_client.utility.verify_payment_signature({
+            'razorpay_order_id': data.razorpay_order_id,
+            'razorpay_payment_id': data.razorpay_payment_id,
+            'razorpay_signature': data.razorpay_signature
+        })
+        
+        # Verification successful, update payment status
+        old_status = payment.status
+        payment.status = PaymentStatus.PAID
+        payment.payment_method = "Razorpay"
+        payment.bank_reference = data.razorpay_payment_id
+        payment.payment_date = datetime.utcnow()
+        
+        # Update Invoice to PAID and PO to CLOSED
+        inv = db.query(Invoice).filter(Invoice.id == payment.invoice_id).first()
+        if inv:
+            inv.status = InvoiceStatus.PAID
+            if inv.po_id:
+                po = db.query(PurchaseOrder).filter(PurchaseOrder.id == inv.po_id).first()
+                if po:
+                    po.status = POStatus.CLOSED
+                    # Move reserved budget to consumed
+                    if po.requisition_id:
+                        pr = db.query(PurchaseRequisition).filter(PurchaseRequisition.id == po.requisition_id).first()
+                        if pr and pr.budget_code:
+                            budget = db.query(Budget).filter(Budget.budget_code == pr.budget_code).first()
+                            if budget:
+                                budget.reserved = max(0, float(budget.reserved) - float(pr.total_estimated_value))
+                                budget.consumed = float(budget.consumed) + float(pr.total_estimated_value)
+
+        log_audit(db, current_user.id, "RAZORPAY_PAYMENT_SUCCESS", "Payment", payment.id, {"status": old_status})
+        db.commit()
+        db.refresh(payment)
+        
+        return {"message": "Payment verified and settled successfully", "payment_id": payment.id}
+    except razorpay.errors.SignatureVerificationError:
+        payment.status = PaymentStatus.FAILED
+        payment.remarks = (payment.remarks or "") + " | Razorpay Signature Verification Failed"
+        db.commit()
+        raise HTTPException(400, "Payment verification failed. Invalid signature.")
+    except Exception as e:
+        raise HTTPException(500, f"Error verifying payment: {str(e)}")

@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     CLERK_SECRET_KEY: Optional[str] = None
     VITE_CLERK_PUBLISHABLE_KEY: Optional[str] = None
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: Optional[str] = None
+    
+    RAZORPAY_KEY_ID: str = "rzp_test_dummykey"
+    RAZORPAY_KEY_SECRET: str = "dummysecret"
 
     class Config:
         env_file = ".env"
